@@ -11,7 +11,8 @@ from scipy.stats import chi2_contingency
 from scipy.stats import ttest_ind
 
 app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
-server = app.server
+
+
 
 # the style arguments for the sidebar. We use position:fixed and a fixed width
 SIDEBAR_STYLE = {
@@ -93,6 +94,8 @@ def update_output(value):
 @app.callback(Output('graphuni', 'children'),Input('demo-dropdown', 'value'), suppress_callback_exceptions=True)
 def update_output(value):
     return graficas(value)
+    
+server = app.server
 
 if __name__ == "__main__":
     app.run_server(port=8888, debug = True)
