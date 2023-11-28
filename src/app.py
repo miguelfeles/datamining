@@ -10,7 +10,7 @@ from sklearn.ensemble import IsolationForest
 from scipy.stats import chi2_contingency
 from scipy.stats import ttest_ind
 
-app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP],  suppress_callback_exceptions=True)
 server = app.server
 
 # the style arguments for the sidebar. We use position:fixed and a fixed width
@@ -38,13 +38,14 @@ sidebar = html.Div(
         html.H2("Fútbol"),
         html.Hr(),
         html.P(
-            "Análisis partidos del fútbol de inglaterra", className="lead"
+            "De las gradas al Dataset", className="lead"
         ),
         dbc.Nav(
             [
                 dbc.NavLink("Contexto", href="/", active="exact", style={"color": "White"}),
                 dbc.NavLink("Univariado", href="/page-1", active="exact", style={"color": "White"}),
                 dbc.NavLink("Multivariado", href="/page-2", active="exact", style={"color": "White"}),
+                dbc.NavLink("Decisiones", href="/page-3", active="exact", style={"color": "White"}),
             ],
             vertical=True,
             pills=True,
@@ -70,8 +71,10 @@ def render_page_content(pathname):
     elif pathname == "/page-1":
         return univariado()
     elif pathname == "/page-2":
-        return html.P("Oh cool, this is page 2!")
+        return multivariado()
     # If the user tries to reach a different page, return a 404 message
+    elif pathname == "/page-3":
+        return decisiones()
     return html.Div(
         [
             html.H1("404: Not found", className="text-danger"),
@@ -80,6 +83,7 @@ def render_page_content(pathname):
         ],
         className="p-3 bg-light rounded-3",
     )
+
 
 
 @app.callback(Output("equipos", "children"), [Input("radios", "value")])

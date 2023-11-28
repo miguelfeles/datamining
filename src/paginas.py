@@ -12,8 +12,10 @@ from scipy.stats import kstest, normaltest, anderson, shapiro
 import shutil
 from sklearn.ensemble import IsolationForest
 from scipy.stats import chi2_contingency
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind, kruskal
 import numpy as np
+from sklearn.feature_selection import mutual_info_regression, mutual_info_classif
+from sklearn.preprocessing import LabelEncoder
 
 
 
@@ -167,12 +169,79 @@ def univariado():
         entropia[i] = calculate_entropy(df[i])
     children += [html.H6("Datos atípicos", style={"margin-top":"6%"})]
     children += [dcc.Graph(figure=barh(atipicos, "Datos atípicos", "Datos atípicos"), style={"width":"50%", "float":"left", "height":"35vh"}), dcc.Graph(figure=line_plot(entropia, "Entropía de las variables categóricas", "Variables"), style={"width":"50%", "float":"right", "height":"35vh"})]
-
-
-
     children += []
+    return children
+
+def multivariado():
+
+    correlaciones = df2[["home_goal", "away_goal", "home_corner", "away_corner", "home_attack", "away_attack", "home_shots", "away_shots", "ht_diff", "at_diff", "total_corners"]].corr(method='spearman')
+
+# Crear un mapa de calor con Plotly
+    spearman = go.Figure(data=go.Heatmap(
+                        z=correlaciones,
+                        x=correlaciones.columns,
+                        y=correlaciones.columns,
+                        colorscale='tempo'))
+    spearman.update_layout(
+        title='Matriz de Correlación de Spearman',
+        xaxis_nticks=36, yaxis_nticks=36)
+
+    corr_home_corner = correlaciones[['home_corner']].sort_values(by='home_corner', ascending=False)
+
+# Crea un mapa de calor en Plotly
+    spearman2 = go.Figure(data=go.Heatmap(
+                        z=corr_home_corner.T,  # Transpuesta para tener 'home_corner' en el eje y
+                        x=corr_home_corner.index,
+                        y=['home_corner'],
+                        colorscale='tempo'))
+
+    # Actualiza el layout del gráfico
+    spearman2.update_layout(
+        title='Correlación de Spearman de "home_corner" con otras variables',
+        xaxis_nticks=36,
+        width=800,
+        height=300)                  
+
+    # Mostrar el gráfico
+    children = []
+    children += [html.H5("Análisis Multivariado")]
+   
+    children += [dcc.Graph(figure=spearman, style={"width":"40%", "float":"left"})]
+    children += [dcc.Graph(figure=spearman2, style={"width":"30%", "margin-right":"10%", "float":"left"})]
 
 
+    cat_nom = ['tournament', 'home', 'away', 'ht_result', 'at_result']
+    num_ent = ['home_goal', 'away_goal', 'home_corner', 'away_corner', 'home_attack', 'away_attack', 'home_shots', 'away_shots', 'ht_diff', 'at_diff']
+
+    # Crear DataFrame para almacenar los resultados
+    results_df = pd.DataFrame(columns=['Variable Numérica', 'Variable Categórica', 'Estadístico de Prueba', 'Valor p'])
+
+    # Realizar la prueba de Kruskal-Wallis para cada variable numérica en relación con las variables categóricas
+    data = {
+        'Variable Categórica': ['tournament', 'home', 'away', 'ht_result', 'at_result'],
+        'Estadístico de Prueba': [1.897169, 207.169349, 161.556014, 2.548848, 2.548848],
+        'Valor p': [7.546650e-01, 3.029935e-07, 2.760820e-03, 2.795919e-01, 2.795919e-01]
+    }
+    dffinal = pd.DataFrame(data)
+
+    tablarel = dash_table.DataTable(
+        id='tabla',
+        columns=[{"name": i, "id": i} for i in dffinal.columns],
+        data=dffinal.to_dict('records'),
+        style_table={'overflowX': 'auto'},
+        style_cell={
+            'height': 'auto',
+            'minWidth': '80px', 'width': '80px', 'maxWidth': '80px',
+            'whiteSpace': 'normal'
+        }
+    )
+
+    children += [html.H5("Dependencia entre la predictora y objetivo")]
+
+
+    children += [html.H5("Dependencia entre la objetivo y categórica, prueba Kruskall Wallis", style={"margin-top":"25%"})]
+    children += [tablarel]
+    children += [html.H5("En las pruebas de chi cuadrado no se encontró dependencia entre las variables predictoras, el p_valor en todas las relacione fue inferior a 0.05")]
 
     return children
 
@@ -238,6 +307,60 @@ def graficas(valor):
     elif valor in ["home_goal", "away_goal", "home_corner", "away_corner", "home_attack", "away_attack", "home_shots", "away_shots", "ht_diff", "at_diff", "total_corners"]:
         children += [dcc.Graph(figure = px.box(tabla, color_discrete_sequence= ["#186b2e" for i in tabla], orientation='h').update_layout(showlegend = False, title = "Boxplot " + valor))]
         
+    return children
+
+def decisiones():
+    children = [html.H5("Selección de características")]
+
+    target = df2['home_corner']
+
+# Variables numéricas de interés
+    target = df['home_corner']
+
+    # Variables categóricas de interés
+    cat_nom = ['tournament', 'home', 'away', 'ht_result', 'at_result']
+
+    # Codificar las variables categóricas con etiquetas numéricas
+    label_encoder = LabelEncoder()
+    df_encoded = df[cat_nom].apply(label_encoder.fit_transform)
+
+    # Calcular la información mutua para cada variable categórica
+    info_gain = pd.Series(mutual_info_classif(df_encoded, target, discrete_features=True), index=cat_nom)
+
+    # Crear un DataFrame con los resultados
+    info_gain_df = pd.DataFrame(info_gain, columns=['Ganancia de  información'])
+    info_gain_df.index.name = 'Variable Categórica'
+
+    data = {
+    'Fuente': ['C(tournament)', 'C(home)', 'C(away)', 'C(ht_result)', 'C(at_result)', 'Residual'],
+    'Sum Sq': [22.495248, 1951.113648, 1784.138504, 128.361279, 128.361279, 7007.266436],
+    'df': [4.0, 115.0, 115.0, 2.0, 2.0, 1052.0],
+    'F': [0.844302, 2.547134, 2.329152, 9.635431, 9.635431, 'NaN'],
+    'PR(>F)': [4.971372e-01, 9.905306e-15, 3.850289e-12, 7.132656e-05, 7.132656e-05, 'NaN']
+    }
+    df7 = pd.DataFrame(data)
+    anova  = dash_table.DataTable(
+        id='tabla-anova',
+        columns=[{"name": i, "id": i} for i in df7.columns],
+        data=df7.to_dict('records'),
+        style_table={'overflowX': 'auto'},
+        style_cell={
+            'height': 'auto',
+            'minWidth': '80px', 'width': '80px', 'maxWidth': '80px',
+            'whiteSpace': 'normal'
+        }
+    )
+
+    # Imprimir el DataFrame con los resultados
+    children += [dcc.Graph(figure=line_plot({'home': 0.076509, "tournament":	0.003562, "away":	0.078284, "ht_result":	0.002192, "at_result":	0.002192}, "Ganancia de Información", "Variables"), style={"width":"50%", "float":"left"})]
+    
+    children += [html.Div([html.H5("Prueba Anova"), anova], style={"width":"50%", "float":"left", "margin-bottom":"18%"})]
+
+    children += [html.H5("Decisiones")]
+    children += [html.H5("Siguiendo las correlaciones no hay variables que superen el umbral esperado de 0.70. Se esperaba que la variable Home Shots estuviera correlacionado. No obstante si se desea armar un modelo home_shots y home_attack podrían ser añadidas al modelo")]
+    children += [html.H5("Solo se trabajará con datos del 2023")]
+    children += [html.H5("ht_difference(0.76) y att_difference (0.70) pueden ser eliminadas debido a su dependencia con los goles")]
+    children += [html.H5("Home y Away son las variables que mayor ganancia de información brindan")]
     return children
 
 
