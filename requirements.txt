@@ -27,7 +27,6 @@ dash-html-components==2.0.0
 dash-iconify==0.1.2
 dash-mantine-components==0.10.2
 dash-table==5.0.0
-dash-tools==1.11.1
 debugpy==1.6.4
 decorator==5.1.1
 defusedxml==0.7.1
@@ -132,7 +131,7 @@ scipy==1.11.1
 semver==3.0.1
 Send2Trash==1.8.0
 six==1.16.0
-sklearn==0.0.post5
+
 sniffio==1.3.0
 soupsieve==2.3.2.post1
 stack-data==0.6.2
