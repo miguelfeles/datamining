@@ -1,3 +1,2 @@
 # datamining
-
-Prueba 1, minería de datos 
+Este repositorio es de rueba de la materia de minería de datos
